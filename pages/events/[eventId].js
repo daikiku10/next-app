@@ -1,6 +1,6 @@
 import { Fragment } from 'react';
 
-import { getEventById, getAllEvents } from "../../helpers/api-util";
+import { getEventById, getFeaturedEvents } from "../../helpers/api-util";
 import EventSummary from '../../components/event-detail/EventSummary';
 import EventLogistics from '../../components/event-detail/EventLogistics';
 import EventContent from '../../components/event-detail/EventContent';
@@ -13,9 +13,9 @@ const EventDetailPage = (props) => {
 
   if(!event) {
     return (
-      <ErrorAlert>
-        <p>No event found!</p>
-      </ErrorAlert>
+      <div className="center">
+        <p>Loading...</p>
+      </div>
     )
   }
 
@@ -31,6 +31,7 @@ const EventDetailPage = (props) => {
 }
 
 export async function getStaticProps(context) {
+  console.log('[eventId].jsのgetStaticProps実行');
   const eventId = context.params.eventId;
 
   const event = await getEventById(eventId);
@@ -38,13 +39,15 @@ export async function getStaticProps(context) {
   return {
     props: {
       selectedEvent: event
-    }
+    },
+    revalidate: 30
   }
 }
 
 export async function getStaticPaths() {
+  console.log('[eventId].jsのgetStaticPaths実行');
   // DBのidをすべて抽出する必要がある
-  const events = await getAllEvents();
+  const events = await getFeaturedEvents();
 
   // DBからidを抽出し、配列としてpathsキーに渡す
   const paths = events.map(event => ({ params: {eventId: event.id }}));
@@ -56,7 +59,7 @@ export async function getStaticPaths() {
     // [
     //   { params: { eventId: 'e1' }}
     // ]
-    fallback: false
+    fallback: 'blocking'
     // falseにすると不明なIDでページを読み込もうとすると404ページが表示される
   }
 }

@@ -11,13 +11,14 @@ const HomePage = (props) => {
 }
 
 export async function getStaticProps(context) {
+  console.log('getStaticProps実行');
   const featuredEvents = await getFeaturedEvents();
-  console.log('featuredEvents', featuredEvents)
 
   return {
     props: {
       events: featuredEvents
-    }
+    },
+    revalidate: 1800
   }
 }
 
