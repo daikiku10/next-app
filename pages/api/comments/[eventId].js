@@ -1,11 +1,18 @@
-import { MongoClient } from 'mongodb';
+import { connectDatabase, insertDocument, getAllDocuments } from '../../../helpers/db-util';
+
+
 
 async function handler(req, res) {
   const eventId = req.query.eventId;
 
-  const uri = process.env.ATLAS_URI_EVENTS
-  const client = await MongoClient.connect(uri)
+  let client;
 
+  try {
+    client = await connectDatabase();
+  } catch (error) {
+    res.status(500).json({ message: 'Connecting to the database failed!'})
+    return;
+  }
 
   if (req.method === 'POST') {
     // add server-side validation
@@ -19,6 +26,7 @@ async function handler(req, res) {
       text.trim() === ''
     ) {
       res.status(422).json({ message: '無効な入力値です!' });
+      client.close()
       return;
     }
 
@@ -29,29 +37,31 @@ async function handler(req, res) {
       eventId
     }
 
+    let result;
+
+    try {
+      result = await insertDocument(client, 'comments', newComment);
+    } catch (error) {
+      res.status(500).json({ message: 'Inserting comment failed! '});
+      return;
+    }
+
     
-    const db = client.db();
-    
-    const result = await db.collection('comments').insertOne(newComment);
-    
-    console.log(result);
-    
-    newComment.id = result.insertedId;
+    newComment._id = result.insertedId;
 
     res.status(201).json({ message: 'コメント追加', comment: newComment });
 
   }
 
   if (req.method === 'GET') {
-    const db = client.db();
 
-    const documents = await db
-      .collection('comments')
-      .find()
-      .sort({_id: -1}) //降順
-      .toArray();
-
-    res.status(200).json({ comments: documents });
+    try {
+      const documents = await getAllDocuments(client, 'comments', { _id: -1 });
+      res.status(200).json({ comments: documents });
+    } catch (error) {
+      res.status(500).json({ message: 'Getting comments failed!' });
+      return;
+    }
   }
 
   client.close()
