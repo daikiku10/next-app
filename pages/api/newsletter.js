@@ -1,5 +1,21 @@
 import { MongoClient } from 'mongodb';
 
+async function connectDatabase() {
+  const uri = process.env.ATLAS_URI_EVENTS
+  const client = await MongoClient.connect(
+    uri
+  )
+
+  return client;
+}
+
+async function insertDocument(client, document) {
+  const db = client.db();
+
+  await db.collection('newsletter').insertOne(document)
+
+}
+
 async function handler(req, res) {
   if (req.method === 'POST') {
     const userEmail = req.body.email;
@@ -8,16 +24,23 @@ async function handler(req, res) {
       res.status(422).json({message: '無効なメールアドレスです！'});
       return;
     }
-    // 本来はここまで処理が来ればDBへ保存する処理を実装する
-    const uri = process.env.ATLAS_URI
-    const client = await MongoClient.connect(
-      uri,
-    )
-    const db = client.db();
 
-    await db.collection('emails').insertOne({email: userEmail})
+    let client;
 
-    client.close();
+    try {
+      client = await connectDatabase();
+    } catch (error) {
+      res.status(500).json({ message: 'Connecting to the database failed!' });
+      return;
+    }
+    
+    try {
+      await insertDocument(client, { email: userEmail });
+      client.close();
+    } catch (error) {
+      res.status(500).json({ message: 'Inserting data failed!' });
+      return;
+    }
 
     res.status(201).json({ message: 'Signed up!'});
   }
