@@ -1,5 +1,10 @@
-const handler = (req, res) => {
+import { MongoClient } from 'mongodb';
+
+async function handler(req, res) {
   const eventId = req.query.eventId;
+
+  const uri = process.env.ATLAS_URI_EVENTS
+  const client = await MongoClient.connect(uri)
 
 
   if (req.method === 'POST') {
@@ -18,13 +23,20 @@ const handler = (req, res) => {
     }
 
     const newComment = {
-      id: new Date().toISOString(),
       email,
       name,
-      text
+      text,
+      eventId
     }
+
     
-    console.log(newComment);
+    const db = client.db();
+    
+    const result = await db.collection('comments').insertOne(newComment);
+    
+    console.log(result);
+    
+    newComment.id = result.insertedId;
 
     res.status(201).json({ message: 'コメント追加', comment: newComment });
 
@@ -38,6 +50,8 @@ const handler = (req, res) => {
 
     res.status(200).json({ comments: dummyList });
   }
+
+  client.close()
 }
 
 export default handler;
